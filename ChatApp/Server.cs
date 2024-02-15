@@ -16,7 +16,7 @@ namespace ChatServerApp
     public class Server
     {
         TcpListener listener = new TcpListener(IPAddress.Any, 8888);
-        List<TcpClient> users = new List<TcpClient>();
+        List<ClientObj> users = new List<ClientObj>();
 
         public async Task Run()
         {
@@ -24,46 +24,54 @@ namespace ChatServerApp
             {
                 listener.Start();
 
-                await Console.Out.WriteLineAsync("Сервер запущен!");
+                Console.WriteLine("Сервер запущен!");
 
                 while (true)
                 {
                     var tcpClient = await listener.AcceptTcpClientAsync();
-                    users.Add(tcpClient);
-
-                    Console.WriteLine("Пользователь успешно подключен!");
-
-                    await Task.Run(() => ProcessClient(tcpClient));
+                    ClientObj client = new ClientObj(tcpClient, this);
+                    users.Add(client);
+                    Task.Run(client.ProcessAsync);
                 }
             }
-            catch { }
-            finally { }
+            catch (Exception e)
+            {
+                Console.WriteLine(e.Message);
+            }
+            finally
+            {
+                Disconnect();
+            }
         }
 
-        public async Task ProcessClient(TcpClient client)
+        public  async Task BroadcastMessageAsync(string message, string id)
         {
-            var reader = new StreamReader(client.GetStream());
-
-            while (client.Connected)
+            foreach (var client in users)
             {
-                string? msg = await reader.ReadLineAsync();
-
-                if (msg != null)
+                if (client.Id != id)
                 {
-                    foreach (var user in users)
-                    {
-                        if (user != client)
-                        {
-                            using (var writer = new StreamWriter(user.GetStream()))
-                            {
-                                await writer.WriteLineAsync(msg);
-                            };
-                        }
-                    }
+                    await client.Writer.WriteLineAsync(message);
+                    await client.Writer.FlushAsync();
                 }
-
-                reader.Close();
             }
+        }
+
+        public void RemoveConnection(string id)
+        {
+            ClientObj? client = users.FirstOrDefault(c => c.Id == id);
+
+            if (client != null) users.Remove(client);
+
+            client?.Close();
+        }
+
+        public void Disconnect()
+        {
+            foreach (var client in users)
+            {
+                client.Close();
+            }
+            listener.Stop();
         }
     }
 }

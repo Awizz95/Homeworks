@@ -1,44 +1,75 @@
 ﻿using Microsoft.VisualBasic;
+using System;
 using System.Net;
 using System.Net.Sockets;
+using System.Text;
 
 public class Client
 {
     static async Task Main(string[] args)
     {
         TcpClient tcpClient = new TcpClient();
+        Console.Write("Введите ваше имя: ");
+        string? username = Console.ReadLine();
+        StreamWriter sWriter = null;
+        StreamReader sReader = null;
 
-        Thread.Sleep(2000);
-
-        tcpClient.Connect(IPAddress.Parse("127.0.0.1"), 8888);
-
-        Console.WriteLine("Вы успешно подключены!");
-        Console.WriteLine("Вы можете отправлять сообщения на сервер. Для выхода из чата нажмите \"q\"");
-
-        string? outMsg = string.Empty;
-        var sWriter = new StreamWriter(tcpClient.GetStream());
-        var sReader = new StreamReader(tcpClient.GetStream());
-
-        while (true)
+        try
         {
-            Console.Write("Введите сообщение: ");
-            await Task.Run(() => outMsg = Console.ReadLine());
+            tcpClient.Connect(IPAddress.Parse("127.0.0.1"), 8888);
 
-            if (outMsg == "q") break;
-            else if (outMsg != null)
-            {
-                await sWriter.WriteLineAsync(outMsg);
-                sWriter.Flush();
-                Console.WriteLine("Ваше сообщение отправлено!");
-            }
+            Console.WriteLine("Здравствуйте, " + username + "! Вы успешно подключены!");
+            Console.WriteLine("Вы можете отправлять сообщения на сервер.");
 
-            string? inMsg = await sReader.ReadLineAsync();
+            string? outMsg = string.Empty;
+            sWriter = new StreamWriter(tcpClient.GetStream());
+            sReader = new StreamReader(tcpClient.GetStream());
 
-            if (inMsg != null) Console.WriteLine("Сторонний пользователь написал: " + inMsg);
+            Task.Run(() => ReceiveMessageAsync(sReader));
+
+            await SendMessageAsync(sWriter);
 
         }
-        Console.WriteLine("Приложение закрывается");
-        Console.ReadLine();
+        catch(Exception e)
+        {
+            Console.WriteLine(e.Message);
+        }
 
+        sReader?.Close();
+        sWriter?.Close();
+
+
+        async Task SendMessageAsync(StreamWriter sWriter)
+        {
+            await sWriter.WriteLineAsync(username);
+            await sWriter.FlushAsync();
+
+            while (true)
+            {
+                Console.WriteLine("Введите сообщение: ");
+                string? outMsg = Console.ReadLine();
+                await sWriter.WriteLineAsync(outMsg);
+                await sWriter.FlushAsync();
+            }
+        }
+
+        async Task ReceiveMessageAsync(StreamReader sReader)
+        {
+            while (true)
+            {
+                try
+                {
+                    string? inMsg = await sReader.ReadLineAsync();
+
+                    if (String.IsNullOrEmpty(inMsg)) continue;
+
+                    Console.WriteLine(inMsg);
+                }
+                catch
+                {
+                    break;
+                }
+            }
+        }
     }
 }
