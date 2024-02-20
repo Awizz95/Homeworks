@@ -25,6 +25,18 @@ namespace ChatServerApp
                 listener.Start();
 
                 Console.WriteLine("Сервер запущен!");
+                await Console.Out.WriteLineAsync("Отправьте \"q\" или \"Q\", чтобы выключить сервер!");
+
+                Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        string? q = default;
+                        q = Console.ReadLine();
+                        if (q == "q" || q == "Q")
+                            Disconnect();
+                    }
+                });
 
                 while (true)
                 {
@@ -44,7 +56,7 @@ namespace ChatServerApp
             }
         }
 
-        public  async Task BroadcastMessageAsync(string message, string id)
+        public async Task BroadcastMessageAsync(string message, string id)
         {
             foreach (var client in users)
             {

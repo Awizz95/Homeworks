@@ -19,7 +19,7 @@ public class Client
             tcpClient.Connect(IPAddress.Parse("127.0.0.1"), 8888);
 
             Console.WriteLine("Здравствуйте, " + username + "! Вы успешно подключены!");
-            Console.WriteLine("Вы можете отправлять сообщения на сервер.");
+            Console.WriteLine("Вы можете отправлять сообщения на сервер. Отправьте слово \"Exit\", чтобы отключиться от чата!");
 
             string? outMsg = string.Empty;
             sWriter = new StreamWriter(tcpClient.GetStream());
@@ -48,6 +48,15 @@ public class Client
             {
                 Console.WriteLine("Введите сообщение: ");
                 string? outMsg = Console.ReadLine();
+
+                if (outMsg == "Exit")
+                {
+                    sReader?.Close();
+                    sWriter?.Close();
+                    Console.WriteLine("Вы отключены от чата!");
+                    break;
+                }
+
                 await sWriter.WriteLineAsync(outMsg);
                 await sWriter.FlushAsync();
             }
