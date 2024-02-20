@@ -8,7 +8,17 @@ namespace ChatServerApp
     {
         static async Task Main(string[] args)
         {
-            var server = new Server();
+            CancellationTokenSource source = new CancellationTokenSource();
+            CancellationToken token = source.Token;
+
+            var server = new Server(token);
+
+            Task.Run(() =>
+            {
+                Thread.Sleep(25000);
+                source.Cancel();
+            });
+
             await server.Run();
         }
     }
@@ -17,6 +27,12 @@ namespace ChatServerApp
     {
         TcpListener listener = new TcpListener(IPAddress.Any, 8888);
         List<ClientObj> users = new List<ClientObj>();
+        CancellationToken token;
+
+        public Server(CancellationToken token)
+        {
+            this.token = token;
+        }
 
         public async Task Run()
         {
@@ -35,6 +51,14 @@ namespace ChatServerApp
                         q = Console.ReadLine();
                         if (q == "q" || q == "Q")
                             Disconnect();
+                    }
+                });
+
+                Task.Run(() =>
+                {
+                    while (true)
+                    {
+                        if (token.IsCancellationRequested) Disconnect();
                     }
                 });
 
@@ -83,6 +107,8 @@ namespace ChatServerApp
             {
                 client.Close();
             }
+
+            Console.WriteLine("Работа сервера завершена!");
             listener.Stop();
         }
     }
